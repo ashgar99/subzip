@@ -1,0 +1,42 @@
+# Subzip
+
+> Subzip is a free, open-source bookmark that saves your own Moodle assignment submissions, grades, feedback files and marker comments as one zip, organised into folders by module and assignment.
+
+- Website: https://ashgar99.github.io/subzip/
+- Source code: https://github.com/ashgar99/subzip
+- Licence: MIT. Free, with no account, adverts or tracking.
+- Part of Unikit, free tools for university students: https://ashgar99.github.io/
+
+## Features
+
+- Saves your submitted files and online text submissions
+- Saves grades, feedback files and written feedback comments
+- Choose one assignment, one module or every module
+- Organises the zip by module and assignment
+- Tells you which Turnitin assignments to download from Turnitin
+
+## Questions and answers
+
+### What is Subzip?
+
+Subzip is a free, open-source bookmark that saves your own Moodle assignment submissions, grades, feedback files and marker comments as one zip, organised into folders by module and assignment.
+
+### How do I download my own submissions and feedback from Moodle?
+
+Most Moodle guides explain how staff download students’ work. To save your own, drag the Subzip button onto your bookmarks bar, open Moodle, click the bookmark and choose this assignment, this module or all modules.
+
+### Why should I save my work before I graduate?
+
+Universities usually remove access to Moodle some time after you leave. Saving your submissions and feedback keeps a record for portfolios, job applications and postgraduate study.
+
+### Does Subzip include Turnitin submissions?
+
+No. Turnitin keeps its submissions on its own servers, so Subzip tells you how many Turnitin assignments it left out. Download those from each assignment on Moodle using the download icon, and use the pencil icon to open your feedback.
+
+### Can I save just one module or one assignment?
+
+Yes. When you click the bookmark, Subzip asks whether you want the assignment you are on, the module you are in, or every module you have taken.
+
+### Is my work uploaded anywhere?
+
+No. Subzip runs in your browser, talks only to your own Moodle site, and builds the zip on your computer.
