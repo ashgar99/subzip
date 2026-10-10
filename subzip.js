@@ -55,6 +55,7 @@
         <div class="status">Getting ready...</div>
         <div class="bar"><div class="fill"></div></div>
         <div class="meta"><span class="count"></span><span class="file"></span></div>
+        <p class="note keep" hidden>Keep this tab open until the zip downloads. A whole degree, or video submissions, can take a while.</p>
       </div>
       <button class="action tii" hidden></button>
       <p class="note tii-note" hidden></p>
@@ -74,6 +75,7 @@
   const close = () => host.remove();
   const finish = (message, state) => {
     finished = true;
+    $('.keep').hidden = true;
     ui.status(message);
     ui.file('');
     if (state) $('.panel').classList.add(state);
@@ -123,7 +125,7 @@
       const b = document.createElement('button');
       b.className = 'opt' + (i === 0 ? ' first' : '');
       b.textContent = o.label;
-      b.onclick = () => { $('.choose').hidden = true; $('.work').hidden = false; $('.main').hidden = false; ok(o.value); };
+      b.onclick = () => { $('.choose').hidden = true; $('.work').hidden = false; $('.main').hidden = false; $('.keep').hidden = false; ok(o.value); };
       $('.opts').appendChild(b);
     });
   });

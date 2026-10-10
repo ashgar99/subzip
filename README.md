@@ -30,7 +30,8 @@
    - **This assignment** appears when you are on an assignment page.
    - **This module** appears anywhere inside a module, including section and assignment pages.
    - **All modules** saves every module you have taken, with a folder for each.
-4. If any Turnitin submissions were found, click **Download from Turnitin** when the zip is ready to save your original files as well.
+4. Keep the tab open until the zip downloads. Saving a whole degree, or assignments with video submissions, can take several minutes.
+5. If any Turnitin submissions were found, click **Download from Turnitin** when the zip is ready to save your original files as well.
 
 If you cannot drag the button, copy the contents of [`bookmarklet.txt`](bookmarklet.txt), add a new bookmark called Subzip, and paste it in as the address. The bookmark shows a plain globe icon, which is normal for bookmarklets.
 
