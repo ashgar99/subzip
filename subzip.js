@@ -1,8 +1,10 @@
 // Subzip: save your Moodle submissions and feedback in one click
-// Finds every assignment in your Moodle 4 modules and downloads your submitted
-// files, feedback files and feedback comments as one zip.
-// Run it on any Moodle page while logged in. On a module page it saves that
-// module only; anywhere else it saves every module you are enrolled on.
+// Saves your submitted files, feedback files and feedback comments from Moodle 4
+// assignments as one zip, organised into folders by module and assignment.
+// Run it on any Moodle page while logged in, then choose what to save: the
+// assignment you are on, the module you are in, or every module you have taken.
+// Turnitin assignments are included too: your grade and details go in the zip,
+// and your original files download straight from Turnitin.
 // https://github.com/ashgar99/subzip (MIT licence)
 
 (async () => {
@@ -16,31 +18,47 @@
   const shadow = host.attachShadow({ mode: 'open' });
   shadow.innerHTML = `
     <style>
-      .panel { width: 320px; padding: 20px; border-radius: 18px; background: #111; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08), 0 20px 50px rgba(0,0,0,0.45); color: #f5f5f7;
+      .panel { width: 320px; padding: 20px; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.06), 0 12px 40px rgba(0,0,0,0.16); color: #1d1d1f;
         font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
       .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
       .title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
       .dot { width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(135deg, #b197ff, #6d3cf0); }
-      .x { background: none; border: 0; color: #8b8b94; font-size: 22px; line-height: 1; cursor: pointer; padding: 0 2px; }
-      .x:hover { color: #f5f5f7; }
-      .module { color: #a1a1aa; font-size: 13px; margin-bottom: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .x { background: none; border: 0; color: #86868b; font-size: 22px; line-height: 1; cursor: pointer; padding: 0 2px; }
+      .x:hover { color: #1d1d1f; }
+      .module { color: #6e6e73; font-size: 13px; margin-bottom: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .status { font-weight: 500; margin-bottom: 10px; }
-      .bar { height: 6px; border-radius: 3px; background: #262626; overflow: hidden; }
-      .fill { height: 100%; width: 0; background: #b197ff; border-radius: 3px; transition: width 0.3s ease; }
-      .meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 10px; font-size: 12px; color: #8b8b94; min-height: 17px; }
+      .bar { height: 6px; border-radius: 3px; background: #ececf0; overflow: hidden; }
+      .fill { height: 100%; width: 0; background: #7c4dff; border-radius: 3px; transition: width 0.3s ease; }
+      .meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 10px; font-size: 12px; color: #6e6e73; min-height: 17px; }
       .file { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
-      .action { margin-top: 16px; width: 100%; padding: 10px; border: 0; border-radius: 999px; background: #1d1d1d; color: #f5f5f7; font: inherit; font-weight: 500; cursor: pointer; }
-      .action:hover { background: #262626; }
-      .panel.done .action { background: #b197ff; color: #000; }
-      .panel.error .fill { background: #f87171; }
+      .action { margin-top: 16px; width: 100%; padding: 10px; border: 0; border-radius: 999px; background: #f2f2f5; color: #1d1d1f; font: inherit; font-weight: 500; cursor: pointer; }
+      .action:hover { background: #e8e8ed; }
+      .panel.done .action { background: #f2f2f5; color: #1d1d1f; }
+      .panel.error .fill { background: #e5484d; }
+      .ask { font-weight: 500; margin-bottom: 14px; }
+      .opt { display: block; width: 100%; margin-top: 8px; padding: 10px; border: 0; border-radius: 999px; background: #f2f2f5; color: #1d1d1f; font: inherit; font-weight: 500; cursor: pointer; }
+      .opt:hover { background: #e8e8ed; }
+      .opt:focus-visible { outline: 2px solid #7c4dff; outline-offset: 2px; }
+      .opt.first { background: #7c4dff; color: #fff; }
+      .opt.first:hover { background: #6a3aed; }
+      .panel .action.alt { background: #7c4dff; color: #fff; }
+      .panel.done .action.plain { background: #f2f2f5; color: #1d1d1f; }
+      .action:disabled { opacity: 0.7; cursor: default; }
+      .note { margin-top: 10px; font-size: 12px; color: #6e6e73; }
+      [hidden] { display: none !important; }
     </style>
     <div class="panel" role="status" aria-live="polite">
       <div class="head"><div class="title"><span class="dot"></span>Subzip</div><button class="x" aria-label="Close">&times;</button></div>
       <div class="module"></div>
-      <div class="status">Getting ready...</div>
-      <div class="bar"><div class="fill"></div></div>
-      <div class="meta"><span class="count"></span><span class="file"></span></div>
-      <button class="action">Cancel</button>
+      <div class="choose" hidden><div class="ask">What would you like to save?</div><div class="opts"></div></div>
+      <div class="work">
+        <div class="status">Getting ready...</div>
+        <div class="bar"><div class="fill"></div></div>
+        <div class="meta"><span class="count"></span><span class="file"></span></div>
+      </div>
+      <button class="action tii" hidden></button>
+      <p class="note tii-note" hidden></p>
+      <button class="action main">Cancel</button>
     </div>`;
 
   const $ = s => shadow.querySelector(s);
@@ -59,11 +77,11 @@
     ui.status(message);
     ui.file('');
     if (state) $('.panel').classList.add(state);
-    $('.action').textContent = 'Close';
+    $('.main').textContent = 'Close';
   };
   $('.x').onclick = () => { cancelled = true; close(); };
-  $('.action').onclick = () => {
-    if (finished) return close();
+  $('.main').onclick = () => {
+    if (finished || !$('.choose').hidden) return close();
     cancelled = true;
     ui.status('Cancelling...');
   };
@@ -95,32 +113,79 @@
     return out[0].data;
   };
 
+  // Ask what to save, offering only the choices that make sense on this page
+  const choose = options => new Promise(ok => {
+    $('.work').hidden = true;
+    $('.choose').hidden = false;
+    $('.main').hidden = true;
+    $('.opts').innerHTML = '';
+    options.forEach((o, i) => {
+      const b = document.createElement('button');
+      b.className = 'opt' + (i === 0 ? ' first' : '');
+      b.textContent = o.label;
+      b.onclick = () => { $('.choose').hidden = true; $('.work').hidden = false; $('.main').hidden = false; ok(o.value); };
+      $('.opts').appendChild(b);
+    });
+  });
+
   try {
     if (!window.M || !M.cfg || !M.cfg.wwwroot) {
       ui.progress(100);
       return finish('Open any page on your Moodle site while logged in, then click the bookmark again.', 'error');
     }
 
-    // Work out which modules to save: this one, or all of them
-    let courses = [];
-    const here = new URLSearchParams(location.search).get('id');
-    if (/\/course\/view\.php/.test(location.pathname) && here) {
-      courses = [{ id: here, fullname: clean(document.querySelector('h1')?.innerText || document.title) }];
-      ui.scope(courses[0].fullname);
-    } else {
-      ui.status('Finding your modules');
-      const seen = new Set();
-      for (const classification of ['all', 'hidden']) {
-        try {
-          const data = await ajax('core_course_get_enrolled_courses_by_timeline_classification', { classification, limit: 0, offset: 0, sort: 'fullname' });
-          (data.courses || []).forEach(c => { if (!seen.has(c.id)) { seen.add(c.id); courses.push(c); } });
-        } catch (e) { if (classification === 'all') throw e; }
-      }
-      ui.scope(`All modules (${courses.length})`);
+    // Where are we? Moodle tells every page which module it belongs to
+    const bodyCourse = (document.body.className.match(/\bcourse-(\d+)\b/) || [])[1];
+    const courseId = Number(M.cfg.courseId || bodyCourse || 0);
+    const inModule = courseId > 1; // 1 is the site's front page
+    const pageId = new URLSearchParams(location.search).get('id');
+    const onAssign = /\/mod\/assign\/view\.php/.test(location.pathname) && pageId;
+    const onTii = /\/mod\/turnitintooltwo\/view\.php/.test(location.pathname) && pageId;
+    const pageTitle = clean(document.querySelector('#region-main h1, .page-header-headings h1, h1')?.innerText || document.title);
+
+    ui.status('Finding your modules');
+    let enrolled = [];
+    const seenCourse = new Set();
+    for (const classification of ['all', 'hidden']) {
+      try {
+        const data = await ajax('core_course_get_enrolled_courses_by_timeline_classification', { classification, limit: 0, offset: 0, sort: 'fullname' });
+        (data.courses || []).forEach(c => { if (!seenCourse.has(c.id)) { seenCourse.add(c.id); enrolled.push(c); } });
+      } catch (e) { if (classification === 'all' && !inModule) throw e; }
     }
-    if (!courses.length) {
+    let thisModule = null;
+    if (inModule) {
+      thisModule = enrolled.find(c => Number(c.id) === courseId);
+      if (!thisModule) {
+        const cdoc = await getDoc(`${M.cfg.wwwroot}/course/view.php?id=${courseId}`).catch(() => null);
+        thisModule = { id: courseId, fullname: (cdoc && (cdoc.querySelector('.page-header-headings h1, h1')?.innerText || cdoc.title)) || 'This module' };
+      }
+      thisModule = { id: thisModule.id, fullname: clean(thisModule.fullname) };
+    }
+
+    const options = [];
+    if ((onAssign || onTii) && thisModule) options.push({ value: 'assignment', label: 'This assignment' });
+    if (thisModule) options.push({ value: 'module', label: 'This module' });
+    if (enrolled.length) options.push({ value: 'all', label: 'All modules' });
+    if (!options.length) {
       ui.progress(100);
       return finish('No modules were found on your account.', 'error');
+    }
+    const scope = await choose(options);
+    check();
+
+    let courses;
+    let only = null; // a single assignment, when that is what you chose
+    if (scope === 'all') {
+      courses = enrolled.map(c => ({ id: c.id, fullname: clean(c.fullname) }));
+      ui.scope(`All modules (${courses.length})`);
+    } else {
+      courses = [thisModule];
+      if (scope === 'assignment') {
+        only = { type: onTii ? 'tii' : 'assign', url: `${M.cfg.wwwroot}${location.pathname}?id=${pageId}`, title: pageTitle, course: thisModule.fullname };
+        ui.scope(pageTitle);
+      } else {
+        ui.scope(thisModule.fullname);
+      }
     }
 
     // Load JSZip, hiding Moodle's RequireJS loader so the library registers globally
@@ -140,9 +205,8 @@
     const single = courses.length === 1;
 
     // Find every assignment in each module
-    const assignments = [];
-    let turnitin = 0;
-    for (let i = 0; i < courses.length; i++) {
+    const assignments = only ? [only] : [];
+    for (let i = 0; i < (only ? 0 : courses.length); i++) {
       check();
       const c = courses[i];
       ui.status('Finding assignments');
@@ -156,27 +220,34 @@
           const url = a.href.split('#')[0];
           if (seen.has(url)) return;
           seen.add(url);
-          assignments.push({ url, title: clean(a.innerText), course: clean(c.fullname) });
+          assignments.push({ type: 'assign', url, title: clean(a.innerText), course: clean(c.fullname) });
         });
         const tdoc = await getDoc(`${M.cfg.wwwroot}/mod/turnitintooltwo/index.php?id=${c.id}`).catch(() => null);
-        if (tdoc) turnitin += main(tdoc).querySelectorAll('a[href*="/mod/turnitintooltwo/view.php?id="]').length;
+        if (tdoc) main(tdoc).querySelectorAll('a[href*="/mod/turnitintooltwo/view.php?id="]').forEach(a => {
+          const url = a.href.split('#')[0].split('&')[0];
+          if (seen.has(url)) return;
+          seen.add(url);
+          assignments.push({ type: 'tii', url, title: clean(a.innerText), course: clean(c.fullname) });
+        });
       } catch (e) {
         console.warn('Subzip could not read assignments for', c.fullname, e);
       }
     }
     if (!assignments.length) {
       ui.progress(100);
-      return finish('No Moodle assignments were found.', 'error');
+      return finish(single ? 'No assignments were found in this module.' : 'No assignments were found.', 'error');
     }
 
     // Visit each assignment and collect your files and feedback
     const added = new Set();
     let saved = 0;
     const place = (folder, name) => {
-      let full = `${folder}/${name}`;
+      folder = folder.replace(/^\/+/, '');
+      let full = folder ? `${folder}/${name}` : name;
       let n = 1;
       const dot = name.lastIndexOf('.');
-      while (added.has(full)) full = dot > 0 ? `${folder}/${name.slice(0, dot)} (${n++})${name.slice(dot)}` : `${folder}/${name} (${n++})`;
+      const pre = folder ? `${folder}/` : '';
+      while (added.has(full)) full = dot > 0 ? `${pre}${name.slice(0, dot)} (${n++})${name.slice(dot)}` : `${pre}${name} (${n++})`;
       added.add(full);
       return full;
     };
@@ -200,13 +271,74 @@
       return null;
     };
 
+    // Turnitin keeps your work on its own servers. Moodle lists your submission and
+    // grade, and hands out a signed one-off form that downloads the original file.
+    const tiiFiles = [];
+    const tiiPost = async data => {
+      const res = await fetch(`${M.cfg.wwwroot}/mod/turnitintooltwo/ajax.php`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' },
+        body: new URLSearchParams(data)
+      });
+      if (!res.ok) throw new Error('Turnitin did not respond');
+      return res.text();
+    };
+    const saveTurnitin = async (a, base) => {
+      const doc = await getDoc(a.url);
+      const assignment = doc.querySelector('#assignment_id')?.textContent.trim();
+      if (!assignment) return;
+      const parts = [...new Set([...doc.querySelectorAll('[id^="tabs-"], table.mod_turnitintooltwo_submissions_data_table[id]')]
+        .map(el => (el.id.match(/(\d+)$/) || [])[1]).filter(Boolean))];
+      const lines = [a.title, a.course, ''];
+      let found = 0;
+      for (const [n, part] of parts.entries()) {
+        check();
+        let rows = [];
+        try {
+          rows = JSON.parse(await tiiPost({ action: 'get_submissions', assignment, part, start: 0, refresh_requested: 0, request_source: 'initial_load', total: 0, sesskey: M.cfg.sesskey })).aaData || [];
+        } catch (e) { console.warn('Subzip could not read Turnitin part', a.url, part, e); }
+        for (const cells of rows) {
+          const row = document.createElement('div');
+          row.innerHTML = (Array.isArray(cells) ? cells : Object.values(cells)).join('</div><div>');
+          row.querySelectorAll('noscript, form, input').forEach(el => el.remove());
+          const dl = row.querySelector('[id^="downloadoriginal_"]');
+          const paper = dl ? dl.id.split('_')[1] : '';
+          const title = row.querySelector('.submission_title')?.textContent.trim();
+          if (!paper && !title) continue;
+          found++;
+          if (parts.length > 1) lines.push(`Part ${n + 1}`);
+          if (title) lines.push(`Submission title: ${title}`);
+          if (paper) lines.push(`Turnitin paper ID: ${paper}`);
+          const when = [...row.children].map(c => c.textContent.trim()).find(t => /^\d{1,2}\/\d{1,2}\/\d{2,4},? \d{1,2}:\d{2}/.test(t));
+          if (when) lines.push(`Submitted: ${when}`);
+          const sim = row.querySelector('.origreport_score')?.textContent.trim();
+          if (sim) lines.push(`Similarity: ${sim}`);
+          const grade = (row.querySelector('.grade')?.textContent.trim() || '') + (row.querySelector('.grademark_grade')?.textContent.trim() || '');
+          if (grade && /\d/.test(grade)) lines.push(`Grade: ${grade}`);
+          lines.push('');
+          if (paper) tiiFiles.push({ assignment, paper, title: title || a.title, from: a.title });
+        }
+      }
+      if (!found) return;
+      lines.push('Your marker\'s comments are in Turnitin Feedback Studio. Open the assignment on Moodle and click the pencil icon to read them.');
+      lines.push('', `Saved from ${a.url}`);
+      zip.file(place(`${base}/Feedback`, 'Turnitin grade and details.txt'), lines.join('\n'));
+      saved++;
+      ui.count(`${saved} file${saved === 1 ? '' : 's'}`);
+    };
+
     ui.status('Saving your work');
     for (let i = 0; i < assignments.length; i++) {
       check();
       const a = assignments[i];
-      const base = single ? a.title : `${a.course}/${a.title}`;
+      const base = only ? '' : single ? a.title : `${a.course}/${a.title}`;
       ui.file(a.title);
       try {
+        if (a.type === 'tii') {
+          await saveTurnitin(a, base);
+          ui.progress(20 + ((i + 1) / assignments.length) * 70);
+          continue;
+        }
         const doc = await getDoc(a.url);
         const root = main(doc);
         const links = [...new Set([...root.querySelectorAll('a[href*="/pluginfile.php/"]')].map(l => l.href.split('#')[0]))];
@@ -249,7 +381,7 @@
 
     if (!saved) {
       ui.progress(100);
-      return finish(`Checked ${assignments.length} assignments, but none had files or feedback to save.`, 'error');
+      return finish(`Checked ${assignments.length} assignment${assignments.length === 1 ? '' : 's'}, but none had your files or feedback to save.`, 'error');
     }
 
     // Build and save the zip
@@ -260,12 +392,61 @@
     check();
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `${single ? courses[0].fullname : 'My submissions'} (Subzip).zip`;
+    link.download = `${only ? `${only.course} - ${only.title}` : single ? courses[0].fullname : 'My submissions'} (Subzip).zip`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(link.href), 10000);
     ui.progress(100);
-    const extra = turnitin ? ` ${turnitin} Turnitin assignment${turnitin === 1 ? ' was' : 's were'} skipped.` : '';
-    finish(`Done. ${saved} item${saved === 1 ? '' : 's'} saved from ${assignments.length} assignment${assignments.length === 1 ? '' : 's'}.${extra}`, 'done');
+    finish(`Done. ${saved} item${saved === 1 ? '' : 's'} saved from ${assignments.length} assignment${assignments.length === 1 ? '' : 's'}.`, 'done');
+
+    // Offer the Turnitin originals. They come from Turnitin's servers, so the browser
+    // saves each one as its own download rather than inside the zip.
+    if (tiiFiles.length) {
+      const n = tiiFiles.length;
+      const btn = $('.tii');
+      const note = $('.tii-note');
+      btn.hidden = false;
+      btn.classList.add('alt');
+      $('.main').classList.add('plain');
+      btn.textContent = `Download ${n} file${n === 1 ? '' : 's'} from Turnitin`;
+      note.hidden = false;
+      note.textContent = `Your original Turnitin submission${n === 1 ? '' : 's'} will download separately, outside the zip. If your browser asks to allow multiple downloads, click Allow.`;
+      btn.onclick = async () => {
+        btn.disabled = true;
+        const holder = document.createElement('div');
+        holder.style.display = 'none';
+        document.body.appendChild(holder);
+        let done = 0, failed = 0;
+        for (const f of tiiFiles) {
+          if (!host.isConnected) break;
+          btn.textContent = `Downloading ${done + failed + 1} of ${n}...`;
+          ui.file(f.title);
+          try {
+            const html = await tiiPost({ action: 'downloadoriginal', submission: f.paper, assignment: f.assignment });
+            const box = document.createElement('div');
+            box.innerHTML = html;
+            const form = box.querySelector('form');
+            if (!form) throw new Error('No download form');
+            const name = `subzip-tii-${f.paper}`;
+            const frame = document.createElement('iframe');
+            frame.name = name;
+            holder.append(frame, box);
+            form.target = name;
+            form.submit();
+            done++;
+          } catch (e) {
+            failed++;
+            console.warn('Subzip could not download from Turnitin', f, e);
+          }
+          await new Promise(r => setTimeout(r, 2500));
+        }
+        setTimeout(() => holder.remove(), 120000);
+        ui.file('');
+        btn.textContent = failed ? `${done} started, ${failed} could not be downloaded` : `${done} download${done === 1 ? '' : 's'} started`;
+        note.textContent = failed
+          ? 'Some files could not be downloaded. Open those assignments on Moodle and use the download icon on your submission.'
+          : 'Check your Downloads folder. If nothing arrived, open the assignment on Moodle and use the download icon on your submission.';
+      };
+    }
   } catch (e) {
     if (cancelled) {
       finish('Cancelled. Nothing was downloaded.');
