@@ -3,8 +3,8 @@
 // assignments as one zip, organised into folders by module and assignment.
 // Run it on any Moodle page while logged in, then choose what to save: the
 // assignment you are on, the module you are in, or every module you have taken.
-// Turnitin assignments are included too: your grade and details go in the zip,
-// and your original files download straight from Turnitin.
+// Turnitin keeps its submissions on its own servers, so those are not included:
+// the panel tells you how many to download directly from Turnitin.
 // https://github.com/ashgar99/subzip (MIT licence)
 
 (async () => {
@@ -41,9 +41,6 @@
       .opt:focus-visible { outline: 2px solid #7c4dff; outline-offset: 2px; }
       .opt.first { background: #7c4dff; color: #fff; }
       .opt.first:hover { background: #6a3aed; }
-      .panel .action.alt { background: #7c4dff; color: #fff; }
-      .panel.done .action.plain { background: #f2f2f5; color: #1d1d1f; }
-      .action:disabled { opacity: 0.7; cursor: default; }
       .note { margin-top: 10px; font-size: 12px; color: #6e6e73; }
       [hidden] { display: none !important; }
     </style>
@@ -57,7 +54,6 @@
         <div class="meta"><span class="count"></span><span class="file"></span></div>
         <p class="note keep" hidden>Keep this tab open until the zip downloads. A whole degree, or video submissions, can take a while.</p>
       </div>
-      <button class="action tii" hidden></button>
       <p class="note tii-note" hidden></p>
       <button class="action main">Cancel</button>
     </div>`;
@@ -73,8 +69,10 @@
   let cancelled = false;
   let finished = false;
   const close = () => host.remove();
+  let turnitinNote = '';
   const finish = (message, state) => {
     finished = true;
+    if (turnitinNote) { $('.tii-note').hidden = false; $('.tii-note').textContent = turnitinNote; }
     $('.keep').hidden = true;
     ui.status(message);
     ui.file('');
@@ -142,7 +140,6 @@
     const inModule = courseId > 1; // 1 is the site's front page
     const pageId = new URLSearchParams(location.search).get('id');
     const onAssign = /\/mod\/assign\/view\.php/.test(location.pathname) && pageId;
-    const onTii = /\/mod\/turnitintooltwo\/view\.php/.test(location.pathname) && pageId;
     const pageTitle = clean(document.querySelector('#region-main h1, .page-header-headings h1, h1')?.innerText || document.title);
 
     ui.status('Finding your modules');
@@ -165,7 +162,7 @@
     }
 
     const options = [];
-    if ((onAssign || onTii) && thisModule) options.push({ value: 'assignment', label: 'This assignment' });
+    if (onAssign && thisModule) options.push({ value: 'assignment', label: 'This assignment' });
     if (thisModule) options.push({ value: 'module', label: 'This module' });
     if (enrolled.length) options.push({ value: 'all', label: 'All modules' });
     if (!options.length) {
@@ -183,7 +180,7 @@
     } else {
       courses = [thisModule];
       if (scope === 'assignment') {
-        only = { type: onTii ? 'tii' : 'assign', url: `${M.cfg.wwwroot}${location.pathname}?id=${pageId}`, title: pageTitle, course: thisModule.fullname };
+        only = { type: 'assign', url: `${M.cfg.wwwroot}${location.pathname}?id=${pageId}`, title: pageTitle, course: thisModule.fullname };
         ui.scope(pageTitle);
       } else {
         ui.scope(thisModule.fullname);
@@ -208,6 +205,7 @@
 
     // Find every assignment in each module
     const assignments = only ? [only] : [];
+    let turnitin = 0;
     for (let i = 0; i < (only ? 0 : courses.length); i++) {
       check();
       const c = courses[i];
@@ -229,14 +227,18 @@
           const url = a.href.split('#')[0].split('&')[0];
           if (seen.has(url)) return;
           seen.add(url);
-          assignments.push({ type: 'tii', url, title: clean(a.innerText), course: clean(c.fullname) });
+          turnitin++;
         });
       } catch (e) {
         console.warn('Subzip could not read assignments for', c.fullname, e);
       }
     }
+    if (turnitin) {
+      turnitinNote = `${turnitin} Turnitin assignment${turnitin === 1 ? ' is' : 's are'} not included, as Turnitin keeps ${turnitin === 1 ? 'its' : 'their'} submissions itself. To save ${turnitin === 1 ? 'it' : 'them'}, open the assignment on Moodle and use the download icon next to your submission.`;
+    }
     if (!assignments.length) {
       ui.progress(100);
+      if (turnitin) return finish(single ? 'Nothing to save here, as this module only uses Turnitin.' : 'Nothing to save here, as your modules only use Turnitin.', 'error');
       return finish(single ? 'No assignments were found in this module.' : 'No assignments were found.', 'error');
     }
 
@@ -261,7 +263,7 @@
       ui.file(name);
       zip.file(place(folder, name), await res.blob());
       saved++;
-      ui.count(`${saved} file${saved === 1 ? '' : 's'}`);
+      ui.count(`${saved} item${saved === 1 ? '' : 's'}`);
     };
     const rowValue = (root, label) => {
       for (const th of root.querySelectorAll('th, td.cell.c0')) {
@@ -273,62 +275,6 @@
       return null;
     };
 
-    // Turnitin keeps your work on its own servers. Moodle lists your submission and
-    // grade, and hands out a signed one-off form that downloads the original file.
-    const tiiFiles = [];
-    const tiiPost = async data => {
-      const res = await fetch(`${M.cfg.wwwroot}/mod/turnitintooltwo/ajax.php`, {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' },
-        body: new URLSearchParams(data)
-      });
-      if (!res.ok) throw new Error('Turnitin did not respond');
-      return res.text();
-    };
-    const saveTurnitin = async (a, base) => {
-      const doc = await getDoc(a.url);
-      const assignment = doc.querySelector('#assignment_id')?.textContent.trim();
-      if (!assignment) return;
-      const parts = [...new Set([...doc.querySelectorAll('[id^="tabs-"], table.mod_turnitintooltwo_submissions_data_table[id]')]
-        .map(el => (el.id.match(/(\d+)$/) || [])[1]).filter(Boolean))];
-      const lines = [a.title, a.course, ''];
-      let found = 0;
-      for (const [n, part] of parts.entries()) {
-        check();
-        let rows = [];
-        try {
-          rows = JSON.parse(await tiiPost({ action: 'get_submissions', assignment, part, start: 0, refresh_requested: 0, request_source: 'initial_load', total: 0, sesskey: M.cfg.sesskey })).aaData || [];
-        } catch (e) { console.warn('Subzip could not read Turnitin part', a.url, part, e); }
-        for (const cells of rows) {
-          const row = document.createElement('div');
-          row.innerHTML = (Array.isArray(cells) ? cells : Object.values(cells)).join('</div><div>');
-          row.querySelectorAll('noscript, form, input').forEach(el => el.remove());
-          const dl = row.querySelector('[id^="downloadoriginal_"]');
-          const paper = dl ? dl.id.split('_')[1] : '';
-          const title = row.querySelector('.submission_title')?.textContent.trim();
-          if (!paper && !title) continue;
-          found++;
-          if (parts.length > 1) lines.push(`Part ${n + 1}`);
-          if (title) lines.push(`Submission title: ${title}`);
-          if (paper) lines.push(`Turnitin paper ID: ${paper}`);
-          const when = [...row.children].map(c => c.textContent.trim()).find(t => /^\d{1,2}\/\d{1,2}\/\d{2,4},? \d{1,2}:\d{2}/.test(t));
-          if (when) lines.push(`Submitted: ${when}`);
-          const sim = row.querySelector('.origreport_score')?.textContent.trim();
-          if (sim) lines.push(`Similarity: ${sim}`);
-          const grade = (row.querySelector('.grade')?.textContent.trim() || '') + (row.querySelector('.grademark_grade')?.textContent.trim() || '');
-          if (grade && /\d/.test(grade)) lines.push(`Grade: ${grade}`);
-          lines.push('');
-          if (paper) tiiFiles.push({ assignment, paper, title: title || a.title, from: a.title });
-        }
-      }
-      if (!found) return;
-      lines.push('Your marker\'s comments are in Turnitin Feedback Studio. Open the assignment on Moodle and click the pencil icon to read them.');
-      lines.push('', `Saved from ${a.url}`);
-      zip.file(place(`${base}/Feedback`, 'Turnitin grade and details.txt'), lines.join('\n'));
-      saved++;
-      ui.count(`${saved} file${saved === 1 ? '' : 's'}`);
-    };
-
     ui.status('Saving your work');
     for (let i = 0; i < assignments.length; i++) {
       check();
@@ -336,11 +282,6 @@
       const base = only ? '' : single ? a.title : `${a.course}/${a.title}`;
       ui.file(a.title);
       try {
-        if (a.type === 'tii') {
-          await saveTurnitin(a, base);
-          ui.progress(20 + ((i + 1) / assignments.length) * 70);
-          continue;
-        }
         const doc = await getDoc(a.url);
         const root = main(doc);
         const links = [...new Set([...root.querySelectorAll('a[href*="/pluginfile.php/"]')].map(l => l.href.split('#')[0]))];
@@ -356,6 +297,7 @@
         if (online && text(online)) {
           zip.file(place(`${base}/Submission`, 'Online text.html'), `<!doctype html><meta charset="utf-8"><title>${a.title}</title>${online.innerHTML}`);
           saved++;
+          ui.count(`${saved} item${saved === 1 ? '' : 's'}`);
         }
 
         // Grade and written feedback
@@ -373,6 +315,7 @@
           lines.push('', `Saved from ${a.url}`);
           zip.file(place(`${base}/Feedback`, 'Grade and comments.txt'), lines.join('\n'));
           saved++;
+          ui.count(`${saved} item${saved === 1 ? '' : 's'}`);
         }
       } catch (e) {
         if (cancelled) throw e;
@@ -400,55 +343,6 @@
     ui.progress(100);
     finish(`Done. ${saved} item${saved === 1 ? '' : 's'} saved from ${assignments.length} assignment${assignments.length === 1 ? '' : 's'}.`, 'done');
 
-    // Offer the Turnitin originals. They come from Turnitin's servers, so the browser
-    // saves each one as its own download rather than inside the zip.
-    if (tiiFiles.length) {
-      const n = tiiFiles.length;
-      const btn = $('.tii');
-      const note = $('.tii-note');
-      btn.hidden = false;
-      btn.classList.add('alt');
-      $('.main').classList.add('plain');
-      btn.textContent = `Download ${n} file${n === 1 ? '' : 's'} from Turnitin`;
-      note.hidden = false;
-      note.textContent = `Your original Turnitin submission${n === 1 ? '' : 's'} will download separately, outside the zip. If your browser asks to allow multiple downloads, click Allow.`;
-      btn.onclick = async () => {
-        btn.disabled = true;
-        const holder = document.createElement('div');
-        holder.style.display = 'none';
-        document.body.appendChild(holder);
-        let done = 0, failed = 0;
-        for (const f of tiiFiles) {
-          if (!host.isConnected) break;
-          btn.textContent = `Downloading ${done + failed + 1} of ${n}...`;
-          ui.file(f.title);
-          try {
-            const html = await tiiPost({ action: 'downloadoriginal', submission: f.paper, assignment: f.assignment });
-            const box = document.createElement('div');
-            box.innerHTML = html;
-            const form = box.querySelector('form');
-            if (!form) throw new Error('No download form');
-            const name = `subzip-tii-${f.paper}`;
-            const frame = document.createElement('iframe');
-            frame.name = name;
-            holder.append(frame, box);
-            form.target = name;
-            form.submit();
-            done++;
-          } catch (e) {
-            failed++;
-            console.warn('Subzip could not download from Turnitin', f, e);
-          }
-          await new Promise(r => setTimeout(r, 2500));
-        }
-        setTimeout(() => holder.remove(), 120000);
-        ui.file('');
-        btn.textContent = failed ? `${done} started, ${failed} could not be downloaded` : `${done} download${done === 1 ? '' : 's'} started`;
-        note.textContent = failed
-          ? 'Some files could not be downloaded. Open those assignments on Moodle and use the download icon on your submission.'
-          : 'Check your Downloads folder. If nothing arrived, open the assignment on Moodle and use the download icon on your submission.';
-      };
-    }
   } catch (e) {
     if (cancelled) {
       finish('Cancelled. Nothing was downloaded.');

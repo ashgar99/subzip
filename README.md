@@ -16,7 +16,6 @@
 - Asks what to save: the assignment you are on, the module you are in, or every module you have taken.
 - Saves your submitted files, any online text submission, the assignment brief and attachments.
 - Saves feedback files, annotated PDFs, your grade and written feedback comments.
-- Includes Turnitin assignments: your grade, similarity score and submission details go in the zip, and your original files download straight from Turnitin.
 - Packages everything into one zip, with a folder for each module and assignment.
 - Shows a small progress panel on the page, with the option to cancel at any time.
 - Runs in your browser using your existing login. There is nothing to install.
@@ -27,11 +26,11 @@
 1. Go to the [install page](https://ashgar99.github.io/subzip/) and drag the **Subzip** button onto your bookmarks bar (**Cmd + Shift + B** on macOS, **Ctrl + Shift + B** on Windows shows the bar).
 2. Log in to Moodle.
 3. Click the bookmark and choose what to save:
-   - **This assignment** appears when you are on an assignment page.
+   - **This assignment** appears when you are on a Moodle assignment page.
    - **This module** appears anywhere inside a module, including section and assignment pages.
    - **All modules** saves every module you have taken, with a folder for each.
 4. Keep the tab open until the zip downloads. Saving a whole degree, or assignments with video submissions, can take several minutes.
-5. If any Turnitin submissions were found, click **Download from Turnitin** when the zip is ready to save your original files as well.
+5. If any of your assignments were submitted through Turnitin, the panel tells you how many. Download those directly from Turnitin (see below).
 
 If you cannot drag the button, copy the contents of [`bookmarklet.txt`](bookmarklet.txt), add a new bookmark called Subzip, and paste it in as the address. The bookmark shows a plain globe icon, which is normal for bookmarklets.
 
@@ -53,7 +52,12 @@ My submissions (Subzip).zip
 
 Saving one module leaves out the module folder, and saving one assignment leaves out both, since the zip is already named after them.
 
-Turnitin keeps your original files on its own servers, so the browser saves them as separate downloads in your Downloads folder rather than inside the zip. Their grade and details still go in the matching folder as `Turnitin grade and details.txt`.
+### Turnitin submissions
+
+Subzip saves everything Moodle stores itself. Turnitin keeps its submissions and feedback on its own servers, so Turnitin assignments are not included, and Subzip tells you how many it left out. To keep those, open each Turnitin assignment on Moodle:
+
+- Click the download icon next to your submission to save your original file.
+- Click the pencil icon to open Feedback Studio, then use its download button to save a copy with your marker's comments.
 
 
 ## Browser support 🌐
@@ -69,7 +73,7 @@ Turnitin keeps your original files on its own servers, so the browser saves them
 ## Limitations ⚠️
 
 - Quizzes and workshops are not included.
-- Turnitin originals download separately from the zip, and your marker's Turnitin comments stay in Feedback Studio, which Subzip cannot save.
+- Turnitin submissions and feedback are not included. Download them directly from Turnitin, as described above.
 - Feedback that your lecturer has not yet released will not appear.
 - Some universities show feedback in a different plugin. If yours is missing, please [open an issue](https://github.com/ashgar99/subzip/issues).
 
@@ -79,14 +83,14 @@ Turnitin keeps your original files on its own servers, so the browser saves them
 | Problem | Solution |
 | --- | --- |
 | `Open any page on your Moodle site` | Make sure you are logged in to Moodle before clicking the bookmark. |
-| `No assignments were found` | Your modules may use a coursework plugin other than Moodle assignments or Turnitin. |
-| Turnitin files do not arrive | Click **Allow** if your browser asks about multiple downloads. Otherwise, open the assignment on Moodle and use the download icon on your submission. |
+| `No assignments were found` | Your modules may use a coursework plugin other than Moodle assignments. |
+| `Nothing to save here` | Your coursework was submitted through Turnitin. Download it directly from Turnitin, as described above. |
 | `Could not load the zip library` | Your Moodle site is blocking the zip library. Please [open an issue](https://github.com/ashgar99/subzip/issues) with your institution's name. |
 
 
 ## Privacy and security 🔒
 
-The script is short and fully readable in [`subzip.js`](subzip.js). It only talks to your own Moodle site, using the login you already have, and to Turnitin when you ask it to download your originals, and loads one open-source library, [JSZip](https://stuk.github.io/jszip/), to build the archive. No data is collected or sent anywhere else.
+The script is short and fully readable in [`subzip.js`](subzip.js). It only talks to your own Moodle site, using the login you already have, and loads one open-source library, [JSZip](https://stuk.github.io/jszip/), to build the archive. No data is collected or sent anywhere else.
 
 
 ## Development 🧩
